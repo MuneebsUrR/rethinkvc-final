@@ -44,6 +44,8 @@
   <% e.begin_block("styles"); %>
   <link href="../static/css/pad.css?v=<%=settings.randomVersionString%>" rel="stylesheet">
   <link href="../static/css/pad/filetree.css?v=<%=settings.randomVersionString%>" rel="stylesheet">
+  <link href="../static/css/pad/chat.css?v=<%=settings.randomVersionString%>" rel="stylesheet">
+
 
   <% e.begin_block("customStyles"); %>
   <link href="../static/skins/<%=encodeURI(settings.skinName)%>/pad.css?v=<%=settings.randomVersionString%>" rel="stylesheet">
@@ -54,6 +56,36 @@
 
   <link rel="localizations" type="application/l10n+json" href="../locales.json" />
   <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
+
+  <style>
+    /* Add to your CSS file */
+    .toolbar .table {
+      cursor: pointer;
+    }
+
+    .toolbar .table i {
+      font-size: 16px;
+    }
+
+    /* Table styles */
+    #innerdocbody table {
+      border-collapse: collapse;
+      width: 100%;
+      margin: 10px 0;
+    }
+
+    #innerdocbody table td {
+      border: 1px solid #000;
+      padding: 8px;
+      min-width: 50px;
+    }
+
+    #innerdocbody table td:focus {
+      outline: 2px solid #0080ff;
+    }
+  </style>
+
 </head>
 <body>
   <% e.begin_block("body"); %>
@@ -116,6 +148,12 @@
           <% e.begin_block("editbarMenuLeft"); %>
           <%- toolbar.menu(settings.toolbar.left, isReadOnly, 'left', 'pad') %>
           <% e.end_block(); %>
+          <li class="separator"></li>
+          <li class="table">
+            <a class="grouped-middle" data-l10n-id="pad.toolbar.table.title" aria-label="Insert Table" title="Insert Table">
+              <i class="fas fa-table"></i>
+            </a>
+          </li>
       </ul>
       <ul class="menu_right" role="toolbar">
           <% e.begin_block("editbarMenuRight"); %>
@@ -499,5 +537,67 @@
 
   <!-- Add this before the closing body tag -->
   <script src="../static/js/filetree.js"></script>
+
+  <script>
+    // Add this to your pad's JavaScript file
+    const tableHandler = {
+      init() {
+        // Add click handler for table button
+        document.querySelector('.toolbar .table').addEventListener('click', () => {
+          this.showTableDialog();
+        });
+      },
+
+      showTableDialog() {
+        // Show prompt for rows and columns
+        const rows = prompt('Enter number of rows:', '3');
+        const cols = prompt('Enter number of columns:', '3');
+        
+        if (rows && cols) {
+          this.insertTable(parseInt(rows), parseInt(cols));
+        }
+      },
+
+      insertTable(rows, cols) {
+        // Create table HTML
+        let tableHtml = '<table style="width:100%; border-collapse: collapse; margin: 10px 0;">';
+        
+        for (let i = 0; i < rows; i++) {
+          tableHtml += '<tr>';
+          for (let j = 0; j < cols; j++) {
+            tableHtml += '<td style="border: 1px solid #000; padding: 8px; min-width: 50px;"></td>';
+          }
+          tableHtml += '</tr>';
+        }
+        tableHtml += '</table>';
+
+        // Insert table at cursor position
+        const padOuter = document.querySelector('iframe[name="ace_outer"]').contentWindow;
+        const padInner = padOuter.document.querySelector('iframe[name="ace_inner"]').contentWindow;
+        
+        const targetElement = padInner.document.querySelector('#innerdocbody');
+        const selection = padInner.document.getSelection();
+        
+        // Create a new div to hold the table
+        const tableDiv = padInner.document.createElement('div');
+        tableDiv.innerHTML = tableHtml;
+        
+        // Insert at cursor position
+        if (selection.rangeCount) {
+          const range = selection.getRangeAt(0);
+          range.deleteContents();
+          range.insertNode(tableDiv);
+        } else {
+          targetElement.appendChild(tableDiv);
+        }
+      }
+    };
+
+    // Initialize table handler when document is ready
+    if (typeof clientVars !== 'undefined') {
+      tableHandler.init();
+    }
+  </script>
+
 </body>
 </html>
