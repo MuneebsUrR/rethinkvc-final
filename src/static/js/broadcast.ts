@@ -448,6 +448,23 @@ const loadBroadcastJS = (socket, sendSocketMsg, fireWhenAllScriptsAreLoaded, Bro
       if (data.code === 0) { // Success
         const authorsList = document.getElementById('listAuthorsOfPads');
         authorsList.innerHTML = ''; // Clear existing list
+
+        // Add "Show All" option at the top
+        const showAllLi = document.createElement('li');
+        showAllLi.className = 'flex items-center p-2 cursor-pointer hover:bg-gray-50 rounded-md transition-colors';
+        showAllLi.innerHTML = `
+          <div class="flex items-center space-x-3 w-full">
+            <span class="inline-block w-4 h-4 rounded-full bg-gray-300"></span>
+            <span class="text-gray-700">Show All Authors</span>
+          </div>
+        `;
+        showAllLi.addEventListener('click', (e) => {
+          const allItems = authorsList.querySelectorAll('li');
+          allItems.forEach(item => item.classList.remove('bg-gray-100'));
+          showAllLi.classList.add('bg-gray-100');
+          resetAuthorFilter();
+        });
+        authorsList.appendChild(showAllLi);
         
         data.data.authorIDs.forEach(authorId => {
           const li = document.createElement('li');
@@ -468,15 +485,11 @@ const loadBroadcastJS = (socket, sendSocketMsg, fireWhenAllScriptsAreLoaded, Bro
             </div>
           `;
           
-          // Add click handler for selection
           li.addEventListener('click', (e) => {
             const allItems = authorsList.querySelectorAll('li');
             allItems.forEach(item => item.classList.remove('bg-gray-100'));
             li.classList.add('bg-gray-100');
-            
-            const selectedAuthorId = li.dataset.authorId;
-            // TODO: Add filtering logic here
-            console.log('Selected author:', selectedAuthorId);
+            filterContentByAuthor(authorId);
           });
           
           authorsList.appendChild(li);
@@ -485,6 +498,89 @@ const loadBroadcastJS = (socket, sendSocketMsg, fireWhenAllScriptsAreLoaded, Bro
     } catch (error) {
       console.error('Error fetching authors:', error);
     }
+  };
+
+  const filterContentByAuthor = (authorId) => {
+    // Get all content divs
+    const allDivs = $('#innerdocbody').find('div');
+    const authorClass = linestylefilter.getAuthorClassName(authorId);
+    
+    allDivs.each((_, div) => {
+      const $div = $(div);
+      const hasAuthorContent = $div.find(`.${authorClass}`).length > 0;
+      
+      if (hasAuthorContent) {
+        // Show the line but handle individual spans
+        $div.css('opacity', '1').show();
+        
+        // Process all text nodes and spans in this div
+        const walker = document.createTreeWalker(
+          div,
+          NodeFilter.SHOW_TEXT | NodeFilter.SHOW_ELEMENT,
+          null,
+          false
+        );
+
+        let node;
+        while (node = walker.nextNode()) {
+          if (node.nodeType === Node.TEXT_NODE && node.parentElement !== div) {
+            // Skip text nodes that are children of spans (they're handled with their parent)
+            continue;
+          }
+
+          if (node.nodeType === Node.TEXT_NODE) {
+            // Text node directly in div - wrap it in span and hide it
+            const span = document.createElement('span');
+            span.style.display = 'none';
+            node.parentNode.insertBefore(span, node);
+            span.appendChild(node);
+          } else if (node.nodeType === Node.ELEMENT_NODE && node.nodeName === 'SPAN') {
+            // Handle span elements
+            const $span = $(node);
+            if ($span.hasClass(authorClass)) {
+              $span.css('display', 'inline');
+            } else {
+              $span.css('display', 'none');
+            }
+          }
+        }
+      } else {
+        // No author content in this line
+        if ($div.text().trim() === '') {
+          // Keep empty lines slightly visible for structure
+          $div.css('opacity', '0.1').show();
+        } else {
+          // Hide lines without author content
+          $div.css('display', 'none');
+        }
+      }
+    });
+  };
+
+  const resetAuthorFilter = () => {
+    // Reset all content to visible
+    const allDivs = $('#innerdocbody').find('div');
+    allDivs.each((_, div) => {
+      const $div = $(div);
+      $div.css({
+        'opacity': '1',
+        'display': 'block'
+      });
+      
+      // Reset all spans to visible
+      $div.find('span').css('display', 'inline');
+      
+      // Unwrap text nodes that we wrapped during filtering
+      $div.find('span').each((_, span) => {
+        if (!span.className && span.style.display === 'none') {
+          const parent = span.parentNode;
+          while (span.firstChild) {
+            parent.insertBefore(span.firstChild, span);
+          }
+          parent.removeChild(span);
+        }
+      });
+    });
   };
 
   // to start upon window load, just push a function onto this array
