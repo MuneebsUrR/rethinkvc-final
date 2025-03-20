@@ -1,16 +1,35 @@
 import React, { useState } from 'react'
 import SearchBar from './SearchBar'
+import { getFirestore, doc, setDoc } from 'firebase/firestore'
+import { app } from '../../configs/FirebaseConfig'
 
 const RepoList = ({ repos }) => {
   const [searchTerm, setSearchTerm] = useState('')
   console.log(repos)
+  
+  // Initialize Firestore
+  const db = getFirestore(app)
 
   const filteredRepos = repos.filter(repo =>
     repo.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
     (repo.description && repo.description.toLowerCase().includes(searchTerm.toLowerCase()))
   )
 
-  const handleImport = (repo) => {
+  const handleImport = async (repo) => {
+    // Store repo details in Firestore
+    if (repo.clone_url) {
+      try {
+        await setDoc(doc(db, "repositories", repo.name), {
+          clone_url: repo.clone_url,
+          owner: repo.owner.login,
+          added_at: new Date().toISOString()
+        });
+        console.log(`Repository URL saved to Firestore for: ${repo.name}`);
+      } catch (error) {
+        console.error("Error storing repository in Firestore:", error);
+      }
+    }
+    
     // Save to history in localStorage
     const history = JSON.parse(localStorage.getItem('repoHistory') || '[]')
     const newHistory = [
@@ -21,7 +40,7 @@ const RepoList = ({ repos }) => {
     localStorage.setItem('repoHistory', JSON.stringify(newHistory))
     
     // Navigate to etherpad
-    window.open(`http://0.0.0.0:9001/p/${repo.id}`, '_blank')
+    window.open(`http://0.0.0.0:9001/p/${repo.name}`, '_blank')
   }
 
   // Format date to be more readable

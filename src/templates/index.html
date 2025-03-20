@@ -1,4 +1,3 @@
-
 <!doctype html>
 <html lang="en">
     <head>
@@ -59,7 +58,31 @@
                 <% } %>
 
                 <div class="bg-white shadow-sm rounded-lg p-6">
-                    <h2 class="text-lg font-medium text-gray-900 mb-4">Available Pads</h2>
+                    <!-- Header row with Recent Pads text and GitHub import button -->
+                    <div class="flex justify-between items-center mb-4">
+                        <h2 class="text-lg font-medium text-gray-900">Recent Pads</h2>
+                        <button id="import-github-button" class="px-3 py-2 bg-gray-800 text-white rounded-md hover:bg-gray-700 flex items-center" onclick="window.location.href='http://localhost:5173'">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="mr-1">
+                                <path d="M9 19c-5 1.5-5-2.5-7-3m14 6v-3.87a3.37 3.37 0 0 0-.94-2.61c3.14-.35 6.44-1.54 6.44-7A5.44 5.44 0 0 0 20 4.77 5.07 5.07 0 0 0 19.91 1S18.73.65 16 2.48a13.38 13.38 0 0 0-7 0C6.27.65 5.09 1 5.09 1A5.07 5.07 0 0 0 5 4.77a5.44 5.44 0 0 0-1.5 3.78c0 5.42 3.3 6.61 6.44 7A3.37 3.37 0 0 0 9 18.13V22"></path>
+                            </svg>
+                            Import from GitHub
+                        </button>
+                    </div>
+                    
+                    <!-- Search bar for pads -->
+                    <div class="mb-4">
+                        <div class="relative">
+                            <input type="text" id="pad-search" 
+                                placeholder="Search pads..." 
+                                class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"/>
+                            <div class="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                                </svg>
+                            </div>
+                        </div>
+                    </div>
+                    
                     <ul id="pads" class="space-y-2"></ul>
                 </div>
             </div>
@@ -86,59 +109,22 @@
                     });
                     const data = await response.json();
                     const padList = document.getElementById('pads');
+                    
+                    // Store all pads for search filtering
+                    let allPads = [];
+                    
                     if (data.code === 0) {
-                        data.data.padIDs.forEach(pad => {
-                            const listItem = document.createElement('li');
-                            listItem.className = 'flex justify-between items-center';
-
-                            const button = document.createElement('button');
-                            button.className = 'w-full text-left px-4 py-2 text-gray-700 hover:bg-gray-100 rounded-md flex items-center';
-                            button.innerHTML = `
-                                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="icon">
-                                    <path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"></path>
-                                    <polyline points="14 2 14 8 20 8"></polyline>
-                                </svg>
-                                ${pad}
-                            `;
-                            button.addEventListener('click', () => {
-                                window.location.href = `/p/${pad}`;
-                            });
-
-                            const timesliderButton = document.createElement('button');
-                            timesliderButton.className = 'ml-2 px-2 py-1 bg-blue-500 text-white rounded-md hover:bg-blue-600';
-                            timesliderButton.textContent = 'Timeline';
-                            timesliderButton.addEventListener('click', (event) => {
-                                event.stopPropagation();
-                                window.location.href = `/p/${pad}/timeslider`;
-                            });
-
-                            const deleteButton = document.createElement('button');
-                            deleteButton.className = 'ml-2 px-2 py-1 bg-red-500 text-white rounded-md hover:bg-red-600';
-                            deleteButton.textContent = 'Delete';
-                            deleteButton.addEventListener('click', async (event) => {
-                                event.stopPropagation(); // Prevent the click from triggering the pad open
-                                try {
-                                    const deleteResponse = await fetch(`/api/1.3.0/deletePad?padID=${pad}`, {
-                                        method: 'POST',
-                                        headers: {
-                                            'Content-Type': 'application/json',
-                                        }
-                                    });
-                                    const deleteData = await deleteResponse.json();
-                                    if (deleteData.code === 0) {
-                                        listItem.remove(); // Remove the pad from the list
-                                    } else {
-                                        console.error('Error deleting pad:', deleteData.message);
-                                    }
-                                } catch (error) {
-                                    console.error('Error deleting pad:', error);
-                                }
-                            });
-
-                            listItem.appendChild(button);
-                            listItem.appendChild(timesliderButton);
-                            listItem.appendChild(deleteButton);
-                            padList.appendChild(listItem);
+                        allPads = data.data.padIDs;
+                        renderPads(allPads);
+                        
+                        // Add search functionality
+                        const searchInput = document.getElementById('pad-search');
+                        searchInput.addEventListener('input', () => {
+                            const searchTerm = searchInput.value.toLowerCase();
+                            const filteredPads = allPads.filter(pad => 
+                                pad.toLowerCase().includes(searchTerm)
+                            );
+                            renderPads(filteredPads);
                         });
                     } else {
                         console.error('Error fetching pads:', data.message);
@@ -146,6 +132,65 @@
                 } catch (error) {
                     console.error('Error fetching pads:', error);
                 }
+            }
+
+            function renderPads(pads) {
+                const padList = document.getElementById('pads');
+                padList.innerHTML = ''; // Clear existing pads
+                
+                pads.forEach(pad => {
+                    const listItem = document.createElement('li');
+                    listItem.className = 'flex justify-between items-center';
+
+                    const button = document.createElement('button');
+                    button.className = 'w-full text-left px-4 py-2 text-gray-700 hover:bg-gray-100 rounded-md flex items-center';
+                    button.innerHTML = `
+                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="icon">
+                            <path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"></path>
+                            <polyline points="14 2 14 8 20 8"></polyline>
+                        </svg>
+                        ${pad}
+                    `;
+                    button.addEventListener('click', () => {
+                        window.location.href = `/p/${pad}`;
+                    });
+
+                    const timesliderButton = document.createElement('button');
+                    timesliderButton.className = 'ml-2 px-2 py-1 bg-blue-500 text-white rounded-md hover:bg-blue-600';
+                    timesliderButton.textContent = 'Timeline';
+                    timesliderButton.addEventListener('click', (event) => {
+                        event.stopPropagation();
+                        window.location.href = `/p/${pad}/timeslider`;
+                    });
+
+                    const deleteButton = document.createElement('button');
+                    deleteButton.className = 'ml-2 px-2 py-1 bg-red-500 text-white rounded-md hover:bg-red-600';
+                    deleteButton.textContent = 'Delete';
+                    deleteButton.addEventListener('click', async (event) => {
+                        event.stopPropagation(); // Prevent the click from triggering the pad open
+                        try {
+                            const deleteResponse = await fetch(`/api/1.3.0/deletePad?padID=${pad}`, {
+                                method: 'POST',
+                                headers: {
+                                    'Content-Type': 'application/json',
+                                }
+                            });
+                            const deleteData = await deleteResponse.json();
+                            if (deleteData.code === 0) {
+                                listItem.remove(); // Remove the pad from the list
+                            } else {
+                                console.error('Error deleting pad:', deleteData.message);
+                            }
+                        } catch (error) {
+                            console.error('Error deleting pad:', error);
+                        }
+                    });
+
+                    listItem.appendChild(button);
+                    listItem.appendChild(timesliderButton);
+                    listItem.appendChild(deleteButton);
+                    padList.appendChild(listItem);
+                });
             }
 
             document.addEventListener('DOMContentLoaded', fetchPads);

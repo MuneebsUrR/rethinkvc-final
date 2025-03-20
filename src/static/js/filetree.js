@@ -70,6 +70,48 @@ const FileTree = {
     // Open the new pad
     window.open(`/p/${childPadId}`, '_blank');
   },
+  
+  deletePad(padId) {
+    const tree = this.getTree();
+    const padToDelete = tree[padId];
+    
+    if (!padToDelete) return;
+    
+    // Don't delete if it's a root pad (no parent)
+    if (!padToDelete.parent) {
+      alert("Cannot delete root pad!");
+      return;
+    }
+    
+    // Remove pad from parent's children array
+    const parentPad = tree[padToDelete.parent];
+    if (parentPad) {
+      parentPad.children = parentPad.children.filter(childId => childId !== padId);
+    }
+    
+    // Recursively delete all children
+    this.deleteChildrenRecursively(tree, padId);
+    
+    // Remove pad from tree
+    delete tree[padId];
+    
+    // Save updated tree
+    this.saveTree(tree);
+    
+    // Re-render tree
+    this.renderTree();
+  },
+
+  deleteChildrenRecursively(tree, padId) {
+    const pad = tree[padId];
+    if (!pad) return;
+    
+    // Recursively delete all children first
+    for (const childId of [...pad.children]) {
+      this.deleteChildrenRecursively(tree, childId);
+      delete tree[childId];
+    }
+  },
 
   renderTree() {
     const currentPadId = window.location.pathname.split('/').pop();
@@ -101,13 +143,24 @@ const FileTree = {
           <a href="/p/${padId}" class="flex-grow block px-2 py-1 rounded ${activeClass} hover:bg-gray-100">
             <span class="text-gray-700">${pad.name}</span>
           </a>
-          <button onclick="FileTree.createChildPad('${padId}')" 
-                  class="invisible group-hover:visible px-2 py-1 text-gray-500 hover:text-blue-600"
-                  title="Create new child pad">
-            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
-            </svg>
-          </button>
+          <div class="flex invisible group-hover:visible">
+            <button onclick="FileTree.createChildPad('${padId}')" 
+                    class="px-2 py-1 text-gray-500 hover:text-blue-600"
+                    title="Create new child pad">
+              <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+              </svg>
+            </button>
+            ${pad.parent ? `
+            <button onclick="FileTree.deletePad('${padId}')"
+                    class="px-2 py-1 text-gray-500 hover:text-red-600"
+                    title="Remove pad from tree">
+              <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+            ` : ''}
+          </div>
         </div>
     `;
     
@@ -128,4 +181,4 @@ const FileTree = {
 window.addEventListener('load', () => FileTree.init());
 
 // Make FileTree available globally
-window.FileTree = FileTree; 
+window.FileTree = FileTree;

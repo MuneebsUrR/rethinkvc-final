@@ -1,0 +1,10 @@
+{
+  "name": "ep_tables_custom",
+  "version": "0.1.0",
+  "description": "Custom tables implementation for Etherpad",
+  "author": "Your Name",
+  "dependencies": {},
+  "engines": {
+    "node": ">=12.17.0"
+  }
+}

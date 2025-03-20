@@ -58,33 +58,26 @@
   <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
 
-  <style>
-    /* Add to your CSS file */
-    .toolbar .table {
-      cursor: pointer;
-    }
+  <!-- Firebase SDK -->
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
+  
+  <script>
+    // Firebase configuration
+    const firebaseConfig = {
+      apiKey: "AIzaSyBYaYTgJN2FwIjnUMXdAMlnHjsmigzqk6s",
+      authDomain: "rethinkvc-29da4.firebaseapp.com",
+      projectId: "rethinkvc-29da4",
+      storageBucket: "rethinkvc-29da4.firebasestorage.app",
+      messagingSenderId: "1083457505747",
+      appId: "1:1083457505747:web:64fa72700c8dc959118726",
+      measurementId: "G-83Q9XXCYTM"
+    };
 
-    .toolbar .table i {
-      font-size: 16px;
-    }
-
-    /* Table styles */
-    #innerdocbody table {
-      border-collapse: collapse;
-      width: 100%;
-      margin: 10px 0;
-    }
-
-    #innerdocbody table td {
-      border: 1px solid #000;
-      padding: 8px;
-      min-width: 50px;
-    }
-
-    #innerdocbody table td:focus {
-      outline: 2px solid #0080ff;
-    }
-  </style>
+    // Initialize Firebase
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.firestore();
+  </script>
 
 </head>
 <body>
@@ -101,11 +94,11 @@
         
         <!-- Right side with buttons -->
         <div class="flex items-center space-x-4">
-          <button class="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 text-sm font-medium transition-colors duration-150">
+          <button id="commit-button" class="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 text-sm font-medium transition-colors duration-150">
             Make Commit
           </button>
           
-          <button class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 text-sm font-medium transition-colors duration-150">
+          <button id="push-button" class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 text-sm font-medium transition-colors duration-150">
             Push
           </button>
           
@@ -148,16 +141,17 @@
           <% e.begin_block("editbarMenuLeft"); %>
           <%- toolbar.menu(settings.toolbar.left, isReadOnly, 'left', 'pad') %>
           <% e.end_block(); %>
-          <li class="separator"></li>
-          <li class="table">
-            <a class="grouped-middle" data-l10n-id="pad.toolbar.table.title" aria-label="Insert Table" title="Insert Table">
-              <i class="fas fa-table"></i>
-            </a>
-          </li>
       </ul>
       <ul class="menu_right" role="toolbar">
+        <!-- Add drawing icon -->
+        <li>
+            <button id="drawing-button" class="px-2 py-1 text-gray-700 hover:text-gray-900" onclick="window.open('http://localhost:9002/d/' + window.location.pathname.split('/p/')[1], '_blank');">
+                <i class="fas fa-pencil-alt"></i> <!-- Font Awesome drawing icon -->
+            </button>
+        </li>
           <% e.begin_block("editbarMenuRight"); %>
           <%- toolbar.menu(settings.toolbar.right, isReadOnly, 'right', 'pad') %>
+          
           <% e.end_block(); %>
       </ul>
       <span class="show-more-icon-btn"></span> <!-- use on small screen to display hidden toolbar buttons -->
@@ -539,64 +533,183 @@
   <script src="../static/js/filetree.js"></script>
 
   <script>
-    // Add this to your pad's JavaScript file
-    const tableHandler = {
-      init() {
-        // Add click handler for table button
-        document.querySelector('.toolbar .table').addEventListener('click', () => {
-          this.showTableDialog();
-        });
-      },
-
-      showTableDialog() {
-        // Show prompt for rows and columns
-        const rows = prompt('Enter number of rows:', '3');
-        const cols = prompt('Enter number of columns:', '3');
-        
-        if (rows && cols) {
-          this.insertTable(parseInt(rows), parseInt(cols));
-        }
-      },
-
-      insertTable(rows, cols) {
-        // Create table HTML
-        let tableHtml = '<table style="width:100%; border-collapse: collapse; margin: 10px 0;">';
-        
-        for (let i = 0; i < rows; i++) {
-          tableHtml += '<tr>';
-          for (let j = 0; j < cols; j++) {
-            tableHtml += '<td style="border: 1px solid #000; padding: 8px; min-width: 50px;"></td>';
+    document.addEventListener('DOMContentLoaded', function() {
+      const commitButton = document.getElementById('commit-button');
+      const pushButton = document.getElementById('push-button');
+      
+      // Handle commit button click
+      commitButton.addEventListener('click', async function() {
+        try {
+          // Get current pad name from URL
+          const padPath = window.location.pathname;
+          const currentPadId = padPath.split('/p/')[1];
+          
+          if (!currentPadId) {
+            alert('Could not determine pad ID from URL');
+            return;
           }
-          tableHtml += '</tr>';
+          
+          // Get the file tree from localStorage
+          const padTree = JSON.parse(localStorage.getItem('padTree') || '{}');
+          
+          // Find the root pad (pad with no parent)
+          let rootPadId = currentPadId;
+          let current = padTree[currentPadId];
+          while (current && current.parent) {
+            rootPadId = current.parent;
+            current = padTree[current.parent];
+          }
+          
+          // Prompt for commit message
+          const commitMessage = prompt("Enter commit message:", "");
+          if (!commitMessage) {
+            return; // User cancelled
+          }
+          
+          // Show loading indicator
+          commitButton.disabled = true;
+          commitButton.innerText = "Committing...";
+          
+          // Make API request to create commit
+          const response = await fetch('http://localhost:5000/api/git/commit', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+              rootPadId,
+              commitMessage,
+              padTree
+            })
+          });
+          
+          const result = await response.json();
+          
+          if (result.success) {
+            alert(`Successfully committed: ${result.commitMessage}`);
+          } else {
+            alert(`Error creating commit: ${result.message}`);
+          }
+        } catch (error) {
+          console.error("Error during commit:", error);
+          alert('Error creating commit. See console for details.');
+        } finally {
+          // Reset button state
+          commitButton.disabled = false;
+          commitButton.innerText = "Make Commit";
         }
-        tableHtml += '</table>';
-
-        // Insert table at cursor position
-        const padOuter = document.querySelector('iframe[name="ace_outer"]').contentWindow;
-        const padInner = padOuter.document.querySelector('iframe[name="ace_inner"]').contentWindow;
-        
-        const targetElement = padInner.document.querySelector('#innerdocbody');
-        const selection = padInner.document.getSelection();
-        
-        // Create a new div to hold the table
-        const tableDiv = padInner.document.createElement('div');
-        tableDiv.innerHTML = tableHtml;
-        
-        // Insert at cursor position
-        if (selection.rangeCount) {
-          const range = selection.getRangeAt(0);
-          range.deleteContents();
-          range.insertNode(tableDiv);
-        } else {
-          targetElement.appendChild(tableDiv);
+      });
+      
+      // Handle push button click
+      pushButton.addEventListener('click', async function() {
+        try {
+          // Get current pad name from URL
+          const padPath = window.location.pathname;
+          const padName = padPath.split('/p/')[1];
+          const currentPadId = padName;
+          
+          if (!currentPadId) {
+            alert('Could not determine pad ID from URL');
+            return;
+          }
+          
+          // Get the file tree from localStorage
+          const padTree = JSON.parse(localStorage.getItem('padTree') || '{}');
+          
+          // Find the root pad (pad with no parent)
+          let rootPadId = currentPadId;
+          let current = padTree[currentPadId];
+          while (current && current.parent) {
+            rootPadId = current.parent;
+            current = padTree[current.parent];
+          }
+          
+          // Fetch all repositories from Firestore
+          const reposCollection = await db.collection("repositories").get();
+          let matchedRepo = null;
+          
+          // Find repository where the pad name contains the repo name
+          reposCollection.forEach(doc => {
+            const repoName = doc.id;
+            
+            // Check if the pad name contains the repository name
+            if (padName.includes(repoName)) {
+              // If we already found a match, use the longer repo name
+              // (to handle cases where one repo name is a substring of another)
+              if (matchedRepo && matchedRepo.name.length > repoName.length) {
+                return;
+              }
+              
+              matchedRepo = {
+                name: repoName,
+                cloneUrl: doc.data().clone_url
+              };
+            }
+          });
+          
+          let remoteUrl;
+          if (matchedRepo) {
+            remoteUrl = matchedRepo.cloneUrl;
+            alert(`Using remote URL: ${remoteUrl}`);
+          } else {
+            // If no match is found, prompt the user for the clone URL
+            remoteUrl = prompt("No repository URL found. Please enter the Git clone URL:", "");
+            
+            if (!remoteUrl) {
+              alert('No URL provided. Push operation cancelled.');
+              return;
+            }
+            
+            // Extract a repository name from the pad name or URL
+            let repoName = padName;
+            
+            // If the URL has dashes, use the first part as the repo name
+            if (padName.includes('-')) {
+              repoName = padName.split('-')[0];
+            }
+            
+            // Store the user-provided URL in Firestore
+            await db.collection("repositories").doc(repoName).set({
+              clone_url: remoteUrl,
+              added_at: new Date().toISOString()
+            });
+            
+            alert(`Repository URL saved: ${remoteUrl}`);
+          }
+          
+          // Show loading indicator
+          pushButton.disabled = true;
+          pushButton.innerText = "Pushing...";
+          
+          // Make API request to push changes
+          const response = await fetch('http://localhost:5000/api/git/push', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+              rootPadId,
+              remoteUrl
+            })
+          });
+          
+          const result = await response.json();
+          
+          if (result.success) {
+            alert(`Successfully pushed to remote repository`);
+          } else {
+            alert(`Error pushing changes: ${result.message}`);
+          }
+        } catch (error) {
+          console.error("Error during push:", error);
+          alert('Error pushing changes. See console for details.');
+        } finally {
+          // Reset button state
+          pushButton.disabled = false;
+          pushButton.innerText = "Push";
         }
-      }
-    };
-
-    // Initialize table handler when document is ready
-    if (typeof clientVars !== 'undefined') {
-      tableHandler.init();
-    }
+      });
+    });
   </script>
 
 </body>

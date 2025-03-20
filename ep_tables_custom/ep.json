@@ -1,0 +1,20 @@
+{
+  "parts": [
+    {
+      "name": "ep_tables_custom",
+      "hooks": {
+        "eejsBlock_editbarMenuLeft": "ep_tables_custom/index:eejsBlock_editbarMenuLeft",
+        "eejsBlock_styles": "ep_tables_custom/index:eejsBlock_styles",
+        "collectContentPre": "ep_tables_custom/index:collectContentPre",
+        "collectContentPost": "ep_tables_custom/index:collectContentPost"
+      },
+      "client_hooks": {
+        "aceInitialized": "ep_tables_custom/static/js/index:aceInitialized",
+        "acePaste": "ep_tables_custom/static/js/index:acePaste",
+        "aceAttribsToClasses": "ep_tables_custom/static/js/index:aceAttribsToClasses",
+        "aceEditorCSS": "ep_tables_custom/static/js/index:aceEditorCSS",
+        "aceCreateDomLine": "ep_tables_custom/static/js/index:aceCreateDomLine"
+      }
+    }
+  ]
+}
