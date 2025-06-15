@@ -571,7 +571,7 @@
           commitButton.innerText = "Committing...";
           
           // Make API request to create commit
-          const response = await fetch('http://localhost:5000/api/git/commit', {
+          const response = await fetch('https://3c10-2407-d000-b-2562-cd65-cdd4-4a84-6aa9.ngrok-free.app/api/git/commit', {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json'
@@ -682,7 +682,7 @@
           pushButton.innerText = "Pushing...";
           
           // Make API request to push changes
-          const response = await fetch('http://localhost:5000/api/git/push', {
+          const response = await fetch('https://3c10-2407-d000-b-2562-cd65-cdd4-4a84-6aa9.ngrok-free.app/api/git/push', {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json'
@@ -847,7 +847,7 @@
       if (!drawingContainer.classList.contains('hidden')) {
         // Set iframe source when opening
         const padId = window.location.pathname.split('/p/')[1];
-        drawingIframe.src = 'http://localhost:5174/draw/' + padId;
+        drawingIframe.src = 'https://d46c-2407-d000-b-2562-cd65-cdd4-4a84-6aa9.ngrok-free.app/draw/' + padId;
       } else {
         // Clear iframe source when closing
         drawingIframe.src = '';
