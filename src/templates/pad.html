@@ -847,7 +847,7 @@
       if (!drawingContainer.classList.contains('hidden')) {
         // Set iframe source when opening
         const padId = window.location.pathname.split('/p/')[1];
-        drawingIframe.src = 'http://localhost:9002/d/' + padId;
+        drawingIframe.src = 'http://localhost:5174/draw/' + padId;
       } else {
         // Clear iframe source when closing
         drawingIframe.src = '';
