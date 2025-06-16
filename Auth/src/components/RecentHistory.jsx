@@ -10,7 +10,7 @@ const RecentHistory = () => {
   }, [])
 
   const handleImport = (repoId) => {
-    window.open(`http://0.0.0.0:9001/p/${repoId}`, '_blank')
+    window.open(`http://13.49.70.181:9001/p/${repoId}`, '_blank')
   }
 
   const formatDate = (dateString) => {

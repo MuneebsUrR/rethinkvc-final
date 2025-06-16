@@ -40,7 +40,7 @@ const RepoList = ({ repos }) => {
     localStorage.setItem('repoHistory', JSON.stringify(newHistory))
     
     // Navigate to etherpad
-    window.open(`http://0.0.0.0:9001/p/${repo.name}`, '_blank')
+    window.open(`http://13.49.70.181:9001/p/${repo.name}`, '_blank')
   }
 
   // Format date to be more readable
